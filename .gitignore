@@ -1,0 +1,8 @@
+
+
+
+```{r}
+mydata <- read.csv("mydata.csv")
+
+```
+.Rproj.user

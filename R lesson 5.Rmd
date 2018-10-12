@@ -1,0 +1,155 @@
+---
+title: "R lesson 5"
+author: "Anderson Verzegnazzi"
+date: "October 5, 2018"
+output: html_document
+---
+
+### R cheat sheets
+
+https://www.rstudio.com/resources/cheatsheets/#dplyr
+
+
+
+```{r}
+library(tidyverse)
+if (!require("ggplot2")) install.packages("ggplot2")
+library(ggplot2)
+```
+
+
+#### data set
+```{r}
+dvst <- read_csv("https://raw.githubusercontent.com/vsbuffalo/bds-files/master/chapter-08-r/Dataset_S1.txt")
+
+```
+
+```{r}
+(dvst <- dvst %>% 
+  mutate(diversity = Pi / (10*1000), cent = (start >= 25800000 & end <= 29700000)) %>% 
+  rename(percent.GC = `%GC`, total.SNPs = `total SNPs`, total.Bases = `total Bases`, reference.Bases = `reference Bases`))
+```
+
+```{r}
+### this is for find the middle of the position , need to run this first
+dvst <- mutate(dvst, position = (end + start) / 2)
+
+ggplot(data = dvst) + geom_point(mapping=aes(x=position, y=diversity))
+
+```
+
+### checking the empty space the cetromere reagion, which is hard to sequence
+```{r}
+ggplot(data = dvst) + geom_point(mapping = aes(x=position, y=diversity, color=cent))
+```
+
+```{r}
+ggplot(data = dvst) + 
+  geom_point(mapping = aes(x = position, y = diversity, alpha = cent))
+```
+
+```{r}
+ggplot(data = dvst) + 
+  geom_point(mapping = aes(x = position, y = diversity, shape = cent))
+```
+
+```{r}
+ggplot(data = dvst) + 
+  geom_point(mapping = aes(x = position, y = diversity), color = "blue")
+```
+
+### What is wrong here? Why not blue?  Color need to be outside of parentesis 
+```{r}
+ggplot(data = dvst) + geom_point(mapping = aes(x = position, y = diversity), color = "blue")
+```
+
+### this function give some type of stats
+```{r}
+`geom_smooth()` using method = 'gam' and formula 'y ~ s(x, bs = "cs")'
+```
+
+
+
+
+
+
+
+###Overplotting
+```{r}
+ ggplot(data = dvst) + geom_point(mapping = aes(x=position, y=diversity), alpha=0.01)
+```
+
+
+### density function
+```{r}
+ggplot(data = dvst) + geom_density(mapping = aes(x=diversity), fill="blue")
+```
+
+### separating diversity by reagion
+```{r}
+ggplot(data = dvst) + geom_density(mapping = aes(x=diversity, fill=cent), alpha=0.4)
+```
+
+### maybe is   summary of the data]
+```{r}
+ggplot(data = dvst, mapping = aes(x=depth, y=total.SNPs)) + geom_point(alpha=0.1) + geom_smooth()
+```
+
+### this function give some stats summary
+
+```{r}
+`geom_smooth()` using method = 'gam' and formula 'y ~ s(x, bs = "cs")'
+
+```
+
+
+### chalenging one
+
+```{r}
+ggplot(data = dvst, mapping = aes(x=percent.GC ,y=depth)) + geom_point(alpha=0.1) + geom_smooth()
+```
+
+
+#### Bar plots
+
+```{r}
+ggplot(data = dvst) + 
+  geom_bar(mapping = aes(x = cent))
+```
+
+
+```{r}
+ggplot(data = dvst) + 
+  stat_summary(
+    mapping = aes(x = cent, y = percent.GC),
+    fun.ymin = min,
+    fun.ymax = max,
+    fun.y = median
+  )
+```
+
+
+```{r}
+dvst <- dvst %>% 
+  mutate(GC.binned = cut(percent.GC, 5));
+select(dvst, GC.binned)
+
+ggplot(data = dvst) + geom_bar(mapping = aes(x=GC.binned))
+
+```
+
+
+```{r}
+ggplot(data = dvst) + geom_density(mapping = aes(x=depth, linetype=GC.binned), alpha=0.5)
+```
+
+```{r}
+ggplot(data = dvst) + geom_bar(mapping = aes(x=percent.GC))
+```
+
+
+
+
+
+
+

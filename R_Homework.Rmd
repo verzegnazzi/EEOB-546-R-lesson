@@ -1,0 +1,150 @@
+---
+title: "R Homework"
+author: "Anderson Verzegnazzi"
+date: "October 12, 2018"
+output: html_document
+---
+
+```{r}
+library("tidyverse")
+fang <- read.delim("fang_et_al_genotypes.txt")
+snp_position <- read.delim("snp_position.txt")
+```
+
+### Data Inspection ###
+
+```{r}
+dim(fang) #number of rows and number of columns
+dim(snp_position) #number of rows and number of columns
+class(fang)
+class(snp_position)
+```
+
+### Data Processing ## Replicating UNIX assignment
+
+1- Creating groups
+```{r}
+fang.extracted <- fang[,3:986]
+maize <- subset(fang.extracted, Group == "ZMMIL" | Group == "ZMMLR" | Group=="ZMMMR")
+teosinte <- subset(fang.extracted, Group == "ZMPBA"| Group == "ZMPIL" | Group == "ZMPJA")
+```
+
+2- Transposing to merge
+```{r}
+maize.transposed <- as.data.frame(t(maize[,-1]))
+teosinte.transposed <- as.data.frame(t(teosinte[,-1]))
+```
+
+3- Extractin SNP ID, chromosome number and SNP Position columns
+```{r}
+snp_position_extracted <- snp_position[,c(1,3,4)]
+```
+
+4- Sorting files
+```{r}
+maize.sorted <- maize.transposed[order(row.names(maize.transposed)),]
+teosinte.sorted <- teosinte.transposed[order(row.names(teosinte.transposed)),]
+snp.sorted <- snp_position_extracted[order(snp_position_extracted$SNP_ID),]
+```
+
+5- Removing unknown chromosomes and SNP with multiple
+```{r}
+unique.snps <- subset(snp.sorted, Chromosome %in% 1:10)
+```
+
+6 - Adding same column name in both file
+```{r}
+library(dplyr)
+maize.with.names <- add_rownames(maize.sorted, "SNP_ID")
+teosinte.with.names <- add_rownames(teosinte.sorted, "SNP_ID")
+```
+
+7- Merging maize and teossint file by SNP position
+```{r}
+maize.joined <- merge(unique.snps, maize.with.names, by="SNP_ID")
+teosinte.joined <- merge(unique.snps, teosinte.with.names, by="SNP_ID")
+```
+
+8- Ascending sort (SNP position)
+```{r}
+maize.ascending <- arrange(maize.joined, Position)
+teosinte.ascending <- arrange(teosinte.joined, Position) 
+```
+
+9- Descending sort (SNP position)
+```{r}
+maize.descending <- arrange(maize.joined, desc(Position))
+teosinte.descending <- arrange(teosinte.joined, desc(Position))
+```
+
+10- Enconding missing data (descending files)
+```{r}
+maize.descending[]<- lapply(maize.descending, as.character)
+maize.descending[maize.descending=='?/?'] <- '-/-'
+teosinte.descending[]<- lapply(teosinte.descending, as.character)
+teosinte.descending[teosinte.descending=='?/?'] <- '-/-'
+```
+
+11- Creating files for each chromosome
+```{r}
+for(i in 1:10){
+ temp_df<-maize.ascending[maize.ascending[,2]==i,]
+ write.csv(temp_df, paste("maize.asc.chr",i,".csv",sep=""),row.names=F)}
+
+for(i in 1:10){
+ temp_df<-teosinte.ascending[teosinte.ascending[,2]==i,]
+ write.csv(temp_df, paste("teosinte.asc.chr",i,".csv",sep=""),row.names=F)}
+
+for(i in 1:10){
+ temp_df<-maize.descending[maize.descending[,2]==i,]
+ write.csv(temp_df, paste("maize.desc.chr",i,".csv",sep=""),row.names=F)}
+
+for(i in 1:10){
+ temp_df<-teosinte.descending[teosinte.descending[,2]==i,]
+ write.csv(temp_df, paste("teosinte.desc.chr",i,".csv",sep=""),row.names=F)}
+```
+
+### Part II ###
+
+1- Transposing original data
+```{r}
+library(dplyr)
+fang.transposed <- as.data.frame(t(fang))
+joined.data<-merge(snp_position, fang.transposed, by.x="SNP_ID",by.y="row.names",all=TRUE)
+```
+
+2- Ploting SNP per chr.
+```{r}
+library(ggplot2)
+joined.data$Chromosome<-factor(joined.data$Chromosome, levels = c("1","2","3","4","5","6","7","8","9","10","unknown","multiple","NA"))
+ggplot(joined.data)+ geom_bar(aes(joined.data$Chromosome))+xlab("Chromosome") +ylab("Total Number of SNPs")
+
+```
+
+3- Tidying the data
+```{r}
+library(reshape2)
+genotype.info <- colnames(fang)[-c(1:3)]
+fang.tidy<-melt(fang,measure.vars = genotype.info)
+```
+
+4- Add NA on missing data
+```{r}
+fang.tidy[]<- lapply(fang.tidy, as.character)
+fang.tidy[fang.tidy=='?/?'] <- 'NA'
+```
+
+5- SNP classification by homo ou heterozygotes
+```{r}
+library(plyr)
+fang.tidy$hom.het <- (fang.tidy$value=="A/A"|fang.tidy$value=="C/C"|fang.tidy$value=="G/G"|fang.tidy$value=="T/T")
+fang.class.sorted<-arrange(fang.tidy,Sample_ID,Group)
+counts <- ddply(fang.class.sorted,c("Sample_ID"),summarise,total_homozygous=sum(hom.het,na.rm=TRUE),total_heterozygous=sum(!hom.het,na.rm = TRUE), total_NA=sum(is.na(hom.het)))
+counts.combined<-melt(counts,measure.vars = c("total_homozygous","total_heterozygous","total_NA"))
+```
+
+6- Plotting % homozygous, heterozygous and missing sites per Species_ID
+```{r}
+ggplot(counts.combined,aes(x=Sample_ID,y=value,fill=variable))+geom_bar(stat="identity",position = "stack")
+```
+
